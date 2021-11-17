@@ -68,3 +68,21 @@ class VK:
         if len(photos) > 3:
             photos = [photos[0], photos[1], photos[2]]
         return photos
+
+    def get_city_id(self, message):
+        params_city = {
+            'country_id': 1,
+            'q': message,
+            'need_all': 0,
+            'count': 100
+        }
+        cities = requests.get(f'{self.base_url}database.getCities', params={**self.params, **params_city}).json()
+        cities = list({city['title']: city['id']} for city in cities["response"]["items"])
+
+        if message.capitalize().strip() in cities:
+            city = cities[message.capitalize().strip()]
+            return city
+        else:
+            city = cities[0].values()
+            city = [cc for cc in city][0]
+            return city

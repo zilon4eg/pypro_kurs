@@ -72,7 +72,9 @@ def search_id_user_in_blacklist(id_user, id_found):
         return False
 
 
-if __name__ == '__main__':
-    main = VK(VKfinder.get_user_token())
-    print(VKfinder.user_firstname(418910202))
-    pass
+# if __name__ == '__main__':
+#     main = VK(VKfinder.get_user_token())
+#     print(main.screen_name_to_user_id('zilon'))
+#     print(VKfinder.get_user_data(2956123))
+#     print(main.get_city_id('москва'))
+#     pass

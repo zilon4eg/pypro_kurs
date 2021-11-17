@@ -11,7 +11,6 @@ def write_msg(user_id, message, photos=None):
     if photos == None:
         vk.method('messages.send', {'user_id': user_id, 'message': message,  'random_id': random.randrange(10 ** 7)})
     else:
-
         vk.method('messages.send', {'peer_id': user_id, 'message': message, 'attachment': photos, 'random_id': random.randrange(10 ** 7)})
 
 
@@ -91,36 +90,78 @@ def get_photos(id_user):
     return str(photos)
 
 
-if __name__ == '__main__':
-    group_token = get_group_token()
-    user_token = get_user_token()
-
-    vk = vk_api.VkApi(token=group_token)
-    longpoll = VkLongPoll(vk)
-
+def yes_or_no():
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
-                request = event.text.lower()
+                request = event.text.lower().strip()
+                if request in ['нет', 'не похоже']:
+                    database.add_in_blacklist(event.user_id, love_id)
+                    write_msg(event.user_id, f'Не отчаивайся! Просто, попробуй еще разок)')
+                    break
+                elif request in ['да', 'похоже']:
+                    write_msg(event.user_id, f'Поздравляю, дальше все в твоих руках!')
+                    break
+
+
+def sex_request_from_user():
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW:
+            if event.to_me:
+                user_param[1] = event.text.lower().strip()
+                break
+
+
+def city_request_from_user():
+    find = VK(get_user_token())
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW:
+            if event.to_me:
+                message = event.text.lower().strip()
+                user_param[3] = find.get_city_id(message)
+                break
+
+
+def bdate_request_from_user():
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW:
+            if event.to_me:
+                user_param[2] = event.text.lower().strip()
+                break
+
+
+if __name__ == '__main__':
+    group_token = get_group_token()
+    user_token = get_user_token()
+    vk = vk_api.VkApi(token=group_token)
+
+    longpoll = VkLongPoll(vk)
+    for event in longpoll.listen():
+        if event.type == VkEventType.MESSAGE_NEW:
+            if event.to_me:
+                request = event.text.lower().strip()
                 if request in ['начать', 'привет']:
                     write_msg(event.user_id, f'Хай, {welcome_name(group_token, event.user_id)}!')
                 elif request in ['найди мне пару', 'ищи', 'найди']:
-                    print('<===============================>')
+                    print('==================')
                     print(f'Для: {event.user_id}')
                     user_param = get_user_data(event.user_id)
+                    if not user_param[1]:
+                        write_msg(event.user_id, f'Похоже, в вашей анкете не указан пол. Вы мужчина или женщина?')
+                        sex_request_from_user()
+                    if not user_param[2]:
+                        write_msg(event.user_id, f'Похоже, в вашей анкете не указан возраст. Какого вы года рождения?')
+                        bdate_request_from_user()
+                    if not user_param[3]:
+                        write_msg(event.user_id, f'Похоже, в вашей анкете не указан город. Из какого вы города?')
+                        city_request_from_user()
                     database.add_user(user_param[0], user_param[1], user_param[2], user_param[3])
                     love_id = find_a_pair(event.user_id, user_param)
                     print(f'Нашли: {love_id}')
                     photos = get_photos(love_id)
-                    # write_msg(event.user_id, f'Знакомься, это {user_firstname(love_id)} (https://vk.com/id{love_id})', photos)
                     write_msg(event.user_id, f'Знакомься, это {user_firstname(love_id)} (https://vk.com/id{love_id})', photos)
-                    database.add_in_blacklist(event.user_id, love_id)
-                    if request == 'нет':
-                        database.add_in_blacklist(event.user_id, love_id)
-                        write_msg(event.user_id, f'Не отчаивайся! Просто, попробуй еще разок)')
-                    elif request == 'да':
-                        write_msg(event.user_id, f'Поздравляю, дальше все в твоих руках!')
-
+                    write_msg(event.user_id, f'Похоже на твою половинку, как считаешь?')
+                    yes_or_no()
                 elif request == "пока":
                     write_msg(event.user_id, "Пока((")
                 else:
