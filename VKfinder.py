@@ -8,24 +8,23 @@ import database
 
 
 def write_msg(user_id, message, photos=None):
+    '''
+    отправка сообщения пользователю в чат
+    :param user_id: id пользователя
+    :param message: сообщение для пользователя
+    :param photos: фотографии для пользователя
+    '''
     if photos == None:
         vk.method('messages.send', {'user_id': user_id, 'message': message,  'random_id': random.randrange(10 ** 7)})
     else:
         vk.method('messages.send', {'peer_id': user_id, 'message': message, 'attachment': photos, 'random_id': random.randrange(10 ** 7)})
 
 
-def welcome_name(token, user_id, api_ver='5.81'):
-    base_url = 'https://api.vk.com/method/'
-    params = {
-        'access_token': token,
-        'user_id': user_id,
-        'v': api_ver
-    }
-    firstname = requests.get(f'{base_url}users.get', params=params).json()
-    return firstname['response'][0]['first_name']
-
-
 def get_group_token():
+    '''
+    считываем токен группы из файла
+    :return: токен группы
+    '''
     with open('vk_group_token.txt', "r") as file:
         for line in file:
             token = line
@@ -33,6 +32,10 @@ def get_group_token():
 
 
 def get_user_token():
+    '''
+    считываем токен пользователя из файла
+    :return: токен пользователя
+    '''
     with open('vk_standalone_token.txt', "r") as file:
         for line in file:
             token = line
@@ -40,6 +43,11 @@ def get_user_token():
 
 
 def get_user_data(id_user):
+    '''
+    получаем параметры пользователя VK
+    :param id_user: id пользователя
+    :return: id, пол, год рождения, город проживания
+    '''
     myVK = VK(get_user_token())
     vk_user = myVK.users_info(id_user)
     id = vk_user['response'][0]['id']
@@ -50,6 +58,11 @@ def get_user_data(id_user):
 
 
 def user_firstname(id_user):
+    '''
+    возвращает имя пользователя по id
+    :param id_user: id пользователя
+    :return: имя пользователя
+    '''
     name = VK(get_user_token())
     try:
         firstname = name.users_info(id_user)['response'][0]['first_name']
@@ -59,6 +72,12 @@ def user_firstname(id_user):
 
 
 def find_a_pair(main_user_id, user_parameters):
+    '''
+    побдирает пару по параметрам
+    :param main_user_id: id пользователя, которому подбираем пару
+    :param user_parameters: параметры по которым подбираем пару
+    :return: id подобранного пользователя (пользователи из ЧС или с закрытым профилем отбрасываются)
+    '''
     find = VK(get_user_token())
     find_param = user_parameters
     if find_param[1] == 1:
@@ -75,7 +94,7 @@ def find_a_pair(main_user_id, user_parameters):
         if database.search_id_user_in_blacklist(main_user_id, id_user):
             users.remove(id_user)
             print('УДАЛЕНА анкета из ЧС')
-        elif 'error' in find.get_photos(id_user).keys():
+        elif 'error' in find.find_photos_in_vk(id_user):
             users.remove(id_user)
             print('УДАЛЕН закрытый профиль')
         else:
@@ -83,6 +102,11 @@ def find_a_pair(main_user_id, user_parameters):
 
 
 def get_photos(id_user):
+    '''
+    получаем фотографии и преобразуем их для запроса чрез vk_api
+    :param id_user: id пользователя
+    :return: фотографии в виде photo<owner.id>_<photo_id>
+    '''
     photo = VK(get_user_token())
     photos = photo.find_photos_in_vk(id_user)
     photos = list(f'photo{photo["owner_id"]}_{photo["id"]}' for photo in photos)
@@ -91,6 +115,9 @@ def get_photos(id_user):
 
 
 def yes_or_no():
+    '''
+    небольшое ветвление диалога
+    '''
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
@@ -105,6 +132,7 @@ def yes_or_no():
 
 
 def sex_request_from_user():
+    'запрос пола пользователя'
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
@@ -113,6 +141,7 @@ def sex_request_from_user():
 
 
 def city_request_from_user():
+    'запрос города проживания пользователя'
     find = VK(get_user_token())
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
@@ -123,6 +152,7 @@ def city_request_from_user():
 
 
 def bdate_request_from_user():
+    'запрос года рождения пользователя'
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
             if event.to_me:
@@ -141,7 +171,7 @@ if __name__ == '__main__':
             if event.to_me:
                 request = event.text.lower().strip()
                 if request in ['начать', 'привет']:
-                    write_msg(event.user_id, f'Хай, {welcome_name(group_token, event.user_id)}!')
+                    write_msg(event.user_id, f'Хай, {user_firstname(event.user_id)}!')
                 elif request in ['найди мне пару', 'ищи', 'найди']:
                     print('==================')
                     print(f'Для: {event.user_id}')

@@ -4,6 +4,9 @@ import json
 import datetime
 
 class VK:
+    '''
+    Класс для работы с api VK
+    '''
     base_url = 'https://api.vk.com/method/'
 
     def __init__(self, token, api_ver='5.89'):
@@ -13,6 +16,10 @@ class VK:
         }
 
     def users_info(self, user_id):
+        '''
+        :param user_id: id пользователя
+        :return: данные о пользователе
+        '''
         params_user = {
             'user_id': user_id,
             'fields': 'bdate, sex, city, screen_name',
@@ -22,6 +29,13 @@ class VK:
         return users_info
 
     def search_users(self, sex, age, city):
+        '''
+        ищем пользователя по перечню параметров. отправляется 3 запроса с 3 разными статусами "семейного положения".
+        :param sex: пол
+        :param age: год рождения
+        :param city: город проживания
+        :return: список пользователей подходящих по параметрам
+        '''
         status = [1, 5, 6]
         users_id_all = set()
         for item in status:
@@ -39,16 +53,13 @@ class VK:
             users_id_all.update(users_id)
         return list(users_id_all)
 
-    def get_photos(self, id_user):
-        params_photo = {
-            'owner_id': id_user,
-            'album_id': 'profile',
-            'extended': '1'
-        }
-        response_photo_info = requests.get(f'{self.base_url}photos.get', params={**self.params, **params_photo}).json()
-        return response_photo_info
 
     def screen_name_to_user_id(self, screen_name):
+        '''
+        преобразует 'screen name' в id.
+        :param screen_name: screen name, идуще после https://vk.com/ в ссылке на страницу пользователя
+        :return: id пользователя
+        '''
         params_user = {
             'screen_name': screen_name
         }
@@ -57,19 +68,33 @@ class VK:
         return user_id
 
     def find_photos_in_vk(self, user_id, album_id='profile'):
+        '''
+        В соответствии с заданием, находит 3 фото либо возвращает список с 'error' внутри.
+        :param user_id: id пользователя
+        :param album_id: альбом в котором ищутся фотографии
+        :return: список с 3 самыми залайкаными фото или ошибкой, если аккаунт закрыт
+        '''
         params_photo = {
             'owner_id': int(user_id),
             'album_id': album_id,
             'extended': '1'
         }
         photos = requests.get(f'{self.base_url}photos.get', params={**self.params, **params_photo}).json()
-        photos = list({'owner_id': photo['owner_id'], 'id': photo['id'], 'likes': photo['likes']['count']} for photo in photos['response']['items'])
-        photos = sorted(photos, key=lambda photo: photo['likes'], reverse=True)
-        if len(photos) > 3:
-            photos = [photos[0], photos[1], photos[2]]
-        return photos
+        if 'error' in photos.keys():
+            return list(msg for msg in photos.keys())
+        else:
+            photos = list({'owner_id': photo['owner_id'], 'id': photo['id'], 'likes': photo['likes']['count']} for photo in photos['response']['items'])
+            photos = sorted(photos, key=lambda photo: photo['likes'], reverse=True)
+            if len(photos) > 3:
+                photos = [photos[0], photos[1], photos[2]]
+            return photos
 
     def get_city_id(self, message):
+        '''
+        на основании ввода пользователя ищет город через api
+        :param message: пользовательский ввод
+        :return: id города
+        '''
         params_city = {
             'country_id': 1,
             'q': message,
